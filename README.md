@@ -11,7 +11,8 @@ $ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf jeffotoni/gow
 
 $ docker logs -f <id-container>
 
-$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
+$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
+--data @table.html.json --output /tmp/meuteste.pdf
 
 ```
 
@@ -25,7 +26,8 @@ $ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf jeffotoni/gow
 
 $ docker logs -f <id-container>
 
-$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
+$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
+--data @table.html.json --output /tmp/meuteste.pdf
 
 ```
 
@@ -35,7 +37,8 @@ $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" -
 
 $ go run gowkhtmltopdf.go
 
-$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
+$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
+--data @table.html.json --output /tmp/meuteste.pdf
 
 ```
 
