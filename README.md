@@ -14,3 +14,28 @@ $ docker logs -f <id-container>
 $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
 
 ```
+
+# Build em sua máquina local
+
+```sh
+
+$ docker build --no-cache -f DockerfileAlpine --build-arg PORT=5010 -t xxxxxxxxxxxxx/gowkhtmltopdf:latest .
+
+$ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf jeffotoni/gowkhtmltopdf:latest
+
+$ docker logs -f <id-container>
+
+$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
+
+```
+
+# Rodando o server sem usar docker
+
+```sh
+
+$ go run gowkhtmltopdf.go
+
+$ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" --data @table.html.json --output /tmp/meuteste.pdf
+
+```
+
