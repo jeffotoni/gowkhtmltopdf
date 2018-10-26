@@ -39,3 +39,13 @@ $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" -
 
 ```
 
+# Gerando Json do seu HTML antes de enviar para API
+
+A API recebe um JSON, o nome do arquivo e o html que deseja converter e retorna o PDF.
+Para gerar seu HTML em JSON só rodar o programinha abaixo.
+
+```sh
+
+$ go run gerarHtmlJson.go --file table.html
+
+```
