@@ -18,10 +18,10 @@ import (
 
 var (
 	PORT_SERVER string
+	X_KEY       = os.Getenv("X_KEY")
 )
 
 const (
-	X_KEY               = os.Getenv("X_KEY")
 	HEDER_X_KEY         = "xxxxxxxxxxxxxxxxxxxx"
 	LIMIT_BYTE_BODY     = 31457280 // 30MB
 	maxClients          = 1000     // simultaneos
