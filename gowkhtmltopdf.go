@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"time"
 
 	. "github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	//"io"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -18,17 +21,16 @@ var (
 )
 
 const (
-	HEDER_X_KEY     = "xxxxxxxxxxxxxxxxxxxx"
-	LIMIT_BYTE_BODY = 5000000 // 5MB
-	maxClients      = 1000    // simultaneos
-	NewLimiter      = 1000    // 1k requests per second
-
-	_      = iota
-	KB int = 1 << (2 * iota)
-	MB int = 100 << (3 * iota)
-	GB int = 1000 << (3 * iota)
-
-	MaxHeaderByte = MB
+	X_KEY               = os.Getenv("X_KEY")
+	HEDER_X_KEY         = "xxxxxxxxxxxxxxxxxxxx"
+	LIMIT_BYTE_BODY     = 31457280 // 30MB
+	maxClients          = 1000     // simultaneos
+	NewLimiter          = 1000     // 1k requests per second
+	_                   = iota
+	KB              int = 1 << (2 * iota)
+	MB              int = 100 << (3 * iota)
+	GB              int = 1000 << (3 * iota)
+	MaxHeaderByte       = MB
 )
 
 type jsonHtml struct {
@@ -36,25 +38,24 @@ type jsonHtml struct {
 	Nome string `json:"nome"`
 }
 
+// Structure of our server configurations
+type JsonMsg struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
 func maxClientsFunc(h http.Handler, n int) http.HandlerFunc {
-
 	sema := make(chan struct{}, n)
-
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		sema <- struct{}{}
-
 		defer func() { <-sema }()
-
 		h.ServeHTTP(w, r)
 	}
 }
 
 // init..
 func init() {
-
 	PORT_SERVER = os.Getenv("PORT")
-
 	if PORT_SERVER == "" {
 		PORT_SERVER = "5010"
 	}
@@ -66,7 +67,6 @@ func init() {
 }
 
 func main() {
-
 	// /v1/api/topdf
 	handlerApiHtmltoPdf := http.HandlerFunc(headerHtmltoPdf)
 
@@ -74,14 +74,10 @@ func main() {
 	http.Handle("/v1/api/topdf", maxClientsFunc(handlerApiHtmltoPdf, maxClients))
 
 	confServer := &http.Server{
-
-		Addr: ":" + PORT_SERVER,
-
+		Addr:           ":" + PORT_SERVER,
 		MaxHeaderBytes: MaxHeaderByte, // Size accepted by package
-
-		ReadTimeout: 5 * time.Second,
-
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   10 * time.Second,
 	}
 
 	log.Fatal(confServer.ListenAndServe())
@@ -89,24 +85,52 @@ func main() {
 
 func headerHtmltoPdf(w http.ResponseWriter, r *http.Request) {
 
-	jsonHtmlObj := jsonHtml{}
+	ok, jsonerr, _ := CheckBasic(w, r)
 
-	r.Body = http.MaxBytesReader(w, r.Body, LIMIT_BYTE_BODY)
-
-	defer r.Body.Close()
-
-	decoder := json.NewDecoder(r.Body)
-
-	//err := json.Unmarshal(jsonObj, &jsonHtmlObj)
-	err := decoder.Decode(&jsonHtmlObj)
-	if err != nil {
-		log.Println("Erro unmarshal: ", err)
+	if !ok {
+		msgerr := jsonerr
+		log.Println(msgerr)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`Erro na autenticacao do servico`))
+		w.Write([]byte(msgerr))
 		return
 	}
 
-	byteFile := gerarHtmltoPdf(jsonHtmlObj.Html)
+	jsonHtmlObj := jsonHtml{}
+	// limit bytes request
+	r.Body = http.MaxBytesReader(w, r.Body, LIMIT_BYTE_BODY)
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		msgerr := err.Error()
+		log.Println(msgerr)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(msgerr))
+		return
+	}
+	//fmt.Println("body: ", string(body))
+	//decoder := json.NewDecoder(r.Body)
+	err = json.Unmarshal(body, &jsonHtmlObj)
+	if err != nil {
+		log.Println("Erro unmarshal: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	//err := json.Unmarshal(jsonObj, &jsonHtmlObj)
+	// err := decoder.Decode(&jsonHtmlObj)
+	// if err != nil {
+	// 	log.Println("Erro unmarshal: ", err)
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte(`Erro na autenticacao do servico`))
+	// 	return
+	// }
+	fmt.Println("html 64: ", jsonHtmlObj.Html)
+
+	htmlpure := Decode64String(jsonHtmlObj.Html)
+	fmt.Println("html: ", htmlpure)
+	byteFile := gerarHtmltoPdf(htmlpure)
 
 	file := jsonHtmlObj.Nome
 	mime := http.DetectContentType(byteFile)
@@ -119,7 +143,7 @@ func headerHtmltoPdf(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(fileSize))
 	w.Header().Set("Content-Control", "private, no-transform, no-store, must-revalidate")
 
-	log.Println("Pdf gerado com sucesso para o arquivo: ", file, " tamanho: ", fileSize, " Ip: ", r.RemoteAddr)
+	log.Println("Pdf gerado com sucesso para o arquivo: ", file, " size: ", fileSize, " Ip: ", r.RemoteAddr)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -164,6 +188,81 @@ func gerarHtmltoPdf(htmlStr string) []byte {
 	}
 
 	byteFile := pdfg.Bytes()
-
 	return byteFile
+}
+
+func Encode64String(content string) string {
+	if len(content) > 0 {
+		return base64.StdEncoding.EncodeToString([]byte(content))
+	}
+	return ""
+}
+
+func Encode64Byte(content []byte) string {
+	if len(string(content)) > 0 {
+		return base64.StdEncoding.EncodeToString(content)
+	}
+	return ""
+}
+
+func Decode64String(encoded string) string {
+	if len(encoded) > 0 {
+
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			log.Println("decode error:", err)
+			return ""
+		}
+		return (string(decoded))
+	}
+	return ""
+}
+
+// validates and generates jwt token
+func CheckBasic(w http.ResponseWriter, r *http.Request) (ok bool, msgjson, tokenUserDecodeS string) {
+
+	ok = false
+	msgjson = `{"status":"error","message":"tentando autenticar usuário!"}`
+
+	// Authorization Basic base64 Encode
+	auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+
+	if len(auth) != 2 || auth[0] != "Basic" {
+		msgjson = GetJson(w, "error", http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+	tokenBase64 := strings.Trim(auth[1], " ")
+	tokenBase64 = strings.TrimSpace(tokenBase64)
+
+	tokenUserEnc := tokenBase64
+	// User, Login byte
+	tokenUserDecode := Decode64String(tokenUserEnc)
+	// User, Login string
+	tokenUserDecodeS = strings.TrimSpace(strings.Trim(string(tokenUserDecode), " "))
+	UserR := Decode64String(X_KEY)
+
+	// Validate user and password in the database
+	if tokenUserDecodeS == string(UserR) {
+		ok = true
+		return ok, `{"status":"ok"}`, tokenUserDecodeS
+	} else {
+		stringErr := "Usuário e chaves inválidas"
+		//+ auth[0] + " - " + auth[1]
+		msgjson = GetJson(w, "error", stringErr, http.StatusUnauthorized)
+		return ok, msgjson, tokenUserDecodeS
+	}
+
+	defer r.Body.Close()
+	return ok, msgjson, tokenUserDecodeS
+}
+
+// Returns json by typing on http
+func GetJson(w http.ResponseWriter, Status string, Msg string, httpStatus int) string {
+	msgJsonStruct := &JsonMsg{Status, Msg}
+	msgJson, errj := json.Marshal(msgJsonStruct)
+	if errj != nil {
+		msg := `{"status":"error","message":"We could not generate the json error!"}`
+		return msg
+	}
+	return string(msgJson)
 }
