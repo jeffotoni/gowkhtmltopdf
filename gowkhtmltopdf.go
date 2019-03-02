@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -22,7 +21,6 @@ var (
 )
 
 const (
-	HEDER_X_KEY         = "xxxxxxxxxxxxxxxxxxxx"
 	LIMIT_BYTE_BODY     = 31457280 // 30MB
 	maxClients          = 1000     // simultaneos
 	NewLimiter          = 1000     // 1k requests per second
@@ -86,12 +84,19 @@ func main() {
 func headerHtmltoPdf(w http.ResponseWriter, r *http.Request) {
 
 	ok, jsonerr, _ := CheckBasic(w, r)
-
 	if !ok {
 		msgerr := jsonerr
 		log.Println(msgerr)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(msgerr))
+		return
+	}
+
+	content_type := strings.ToLower(r.Header.Get("Content-Type"))
+	if content_type != "application/json" {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		jsonstr := `{"status":"error","message":"Content-type é obrigatório!"}`
+		w.Write([]byte(jsonstr))
 		return
 	}
 
@@ -108,8 +113,7 @@ func headerHtmltoPdf(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(msgerr))
 		return
 	}
-	//fmt.Println("body: ", string(body))
-	//decoder := json.NewDecoder(r.Body)
+
 	err = json.Unmarshal(body, &jsonHtmlObj)
 	if err != nil {
 		log.Println("Erro unmarshal: ", err)
@@ -118,18 +122,7 @@ func headerHtmltoPdf(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//err := json.Unmarshal(jsonObj, &jsonHtmlObj)
-	// err := decoder.Decode(&jsonHtmlObj)
-	// if err != nil {
-	// 	log.Println("Erro unmarshal: ", err)
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte(`Erro na autenticacao do servico`))
-	// 	return
-	// }
-	fmt.Println("html 64: ", jsonHtmlObj.Html)
-
 	htmlpure := Decode64String(jsonHtmlObj.Html)
-	fmt.Println("html: ", htmlpure)
 	byteFile := gerarHtmltoPdf(htmlpure)
 
 	file := jsonHtmlObj.Nome
@@ -226,7 +219,6 @@ func CheckBasic(w http.ResponseWriter, r *http.Request) (ok bool, msgjson, token
 
 	// Authorization Basic base64 Encode
 	auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-
 	if len(auth) != 2 || auth[0] != "Basic" {
 		msgjson = GetJson(w, "error", http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -261,7 +253,7 @@ func GetJson(w http.ResponseWriter, Status string, Msg string, httpStatus int) s
 	msgJsonStruct := &JsonMsg{Status, Msg}
 	msgJson, errj := json.Marshal(msgJsonStruct)
 	if errj != nil {
-		msg := `{"status":"error","message":"We could not generate the json error!"}`
+		msg := `{"status":"error","message":"Não conseguimos gerar seu json!"}`
 		return msg
 	}
 	return string(msgJson)
