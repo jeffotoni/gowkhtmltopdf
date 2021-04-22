@@ -9,8 +9,19 @@ import (
 )
 
 type TaleHtml struct {
-	Nome string
-	Html string
+	Nome         string
+	Html         string
+	NoCollate    bool   `json:"nocollate,omitempty"`
+	PageSize     string `json:"page_size,omitempty"`
+	Orientation  string `json:"orientation,omitempty"`
+	Dpi          uint   `json:"dpi,omitempty"`
+	MarginBottom uint   `json:"margin_bottom,omitempty"`
+	MarginTop    uint   `json:"margin_top,omitempty"`
+	MarginLeft   uint   `json:"margin_left,omitempty"`
+	MarginRight  uint   `json:"margin_right,omitempty"`
+	ImageDpi     uint   `json:"image_dpi,omitempty"`
+	ImageQuality uint   `json:"image_quality,omitempty"`
+	Grayscale    bool   `json:"grayscale,omitempty"`
 }
 
 func main() {
@@ -35,7 +46,21 @@ func main() {
 
 		htmlEnc := Encode64String(html)
 		// criando estrutura
-		m := TaleHtml{"meu_primeiro_pdf.pdf", htmlEnc}
+		m := TaleHtml{
+			Grayscale:    false,
+			NoCollate:    false,
+			ImageDpi:     600,
+			ImageQuality: 94,
+			PageSize:     "A4",
+			Orientation:  "Portrait",
+			Dpi:          600,
+			MarginBottom: 2,
+			MarginTop:    2,
+			MarginLeft:   2,
+			MarginRight:  2,
+			Nome:         "meu_primeiro_pdf.pdf",
+			Html:         htmlEnc,
+		}
 
 		// convertendo json
 		b, err := json.Marshal(m)
