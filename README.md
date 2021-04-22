@@ -7,7 +7,8 @@ A API irá receber um HTML e retornar um PDF, o html terá que ser passado como 
 
 ```sh
 
-$ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf jeffotoni/gowkhtmltopdf:latest
+$ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf \
+	jeffotoni/gowkhtmltopdf:latest
 
 $ docker logs -f <id-container>
 
@@ -18,16 +19,24 @@ $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
 
 # Build em sua máquina local
 
-```sh
+```bash
 
-$ docker build --no-cache -f DockerfileAlpine --build-arg PORT=5010 -t xxxxxxxxxxxxx/gowkhtmltopdf:latest .
+$ docker build --no-cache -f DockerfileAlpine --build-arg PORT=5010 \
+	-t xxxxxxxxxxxxx/gowkhtmltopdf:latest .
 
-$ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf jeffotoni/gowkhtmltopdf:latest
+$ docker run --restart=always -d -p 5010:5010 --name gowkhtmltopdf \
+	jeffotoni/gowkhtmltopdf:latest
+
+// -- or
+
+$ docker run -p 5010:5010 --name gowkhtmltopdf -e X_KEY=xxxxxx \
+	jeffotoni/gohtmltopdf
 
 $ docker logs -f <id-container>
 
 $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
---data @table.html.json --output /tmp/meuteste.pdf
+	 -H "Authorization:Basic xxxxxx" \
+	--data @table.html.json --output /tmp/meuteste.pdf
 
 ```
 
@@ -38,7 +47,7 @@ $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
 $ go run gowkhtmltopdf.go
 
 $ curl -X POST localhost:5010/v1/api/topdf -H "Content-Type: application/json" \
---data @table.html.json --output /tmp/meuteste.pdf
+	--data @table.html.json --output /tmp/meuteste.pdf
 
 ```
 
@@ -49,6 +58,7 @@ Para gerar seu HTML em JSON só rodar o programinha abaixo.
 
 ```sh
 
-$ go run gerarHtmlJson.go --file table.html
+$ cd gerahtmljson
+$ go run main.go --file table.html
 
 ```
