@@ -1,0 +1,31 @@
+FROM golang:1.16 as builder
+MAINTAINER Jefferson <jeff.otoni@gmail.com>
+#RUN go get -u github.com/SebastiaanKlippert/go-wkhtmltopdf
+
+WORKDIR /go/src/gowkhtmltopdf
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gowkhtmltopdf .
+RUN rm main.go
+#RUN rm wkhtmlpdf.dockerfile
+
+FROM ubuntu:20.04
+MAINTAINER Jeffotoni <jeff.otoni@gmail.com>
+
+RUN apt-get update && apt-get update && apt-get install -y -q --no-install-recommends\
+	ca-certificates \
+	fontconfig \
+	libjpeg-turbo8 \
+	libx11-6 \
+	libxcb1 \
+	libxext6 \
+	libxrender1 \
+	xfonts-base \
+	xfonts-75dpi 
+
+COPY wkhtmltox_0.12.6-1.focal_amd64.deb .
+RUN dpkg -i wkhtmltox_0.12.6-1.focal_amd64.deb
+
+WORKDIR /root
+COPY --from=builder /go/src/gowkhtmltopdf .
+CMD ["./gowkhtmltopdf"]
